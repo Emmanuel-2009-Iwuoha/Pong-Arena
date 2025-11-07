@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pong League 2.0 - Tournament Championship Arena</title>
+    <link rel="stylesheet" href="style-v2.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <style>
+        /* Tournament-specific client styles */
+        .tournament-bracket-viewer {
+            background: var(--bg-glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-lg);
+            margin: var(--spacing-lg) 0;
+            max-height: 400px;
+            overflow: auto;
+        }
+        
+        .bracket-viewer-container {
+            display: flex;
+            gap: var(--spacing-md);
+            min-width: max-content;
+        }
+        
+        .bracket-round-viewer {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            min-width: 180px;
+        }
+        
+        .round-title {
+            font-family: var(--font-primary);
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: var(--spacing-md);
+            font-size: 0.8rem;
+        }
+        
+        .bracket-match-viewer {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-sm);
+            margin: var(--spacing-xs) 0;
+            text-align: center;
+            font-size: 0.8rem;
+            min-height: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .bracket-match-viewer.current-player {
+            border-color: var(--primary-color);
+            background: linear-gradient(45deg, rgba(0, 255, 136, 0.1), rgba(0, 0, 0, 0.3));
+        }
+        
+        .bracket-match-viewer.completed {
+            opacity: 0.7;
+        }
+        
+        .match-player-viewer {
+            padding: 2px 0;
+            font-family: var(--font-secondary);
+        }
+        
+        .match-player-viewer.winner {
+            color: var(--success-color);
+            font-weight: bold;
+        }
+        
+        .match-player-viewer.current {
+            color: var(--primary-color);
+        }
+        
+        .match-score-viewer {
+            font-family: var(--font-primary);
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            margin-top: var(--spacing-xs);
+        }
+        
+        .your-status {
+            background: var(--bg-glass);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-md);
+            margin: var(--spacing-md) 0;
+            text-align: center;
+        }
+        
+        .your-status.eliminated {
+            border-color: var(--error-color);
+            background: linear-gradient(45deg, var(--bg-glass), rgba(255, 68, 68, 0.1));
+        }
+        
+        .your-status.winner {
+            border-color: var(--tournament-winner);
+            background: linear-gradient(45deg, var(--bg-glass), rgba(255, 215, 0, 0.1));
+        }
+        
+        .your-status.bye {
+            border-color: var(--tournament-bye);
+            background: linear-gradient(45deg, var(--bg-glass), rgba(136, 136, 136, 0.1));
+        }
+        
+        .status-icon {
+            font-size: 2rem;
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .status-message {
+            font-family: var(--font-secondary);
+            font-size: 1.1rem;
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .status-detail {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+        
+        .game-mode-indicator {
+            position: absolute;
+            top: var(--spacing-sm);
+            left: var(--spacing-sm);
+            background: var(--bg-glass);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            font-family: var(--font-primary);
+            font-size: 0.7rem;
+            color: var(--primary-color);
+        }
+        
+        .tournament-round-info {
+            text-align: center;
+            padding: var(--spacing-md);
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: var(--radius-lg);
+            margin: var(--spacing-md) 0;
+        }
+        
+        .round-number {
+            font-family: var(--font-primary);
+            font-size: 1.2rem;
+            color: var(--primary-color);
+            margin-bottom: var(--spacing-xs);
+        }
+        
+        .round-description {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        
+        .elimination-countdown {
+            font-family: var(--font-primary);
+            color: var(--error-color);
+            font-size: 1.5rem;
+            margin: var(--spacing-md) 0;
+        }
+
+        .commentary-indicator {
+    position: fixed;
+    bottom: var(--spacing-lg);
+    left: var(--spacing-lg);
+    background: linear-gradient(45deg, rgba(0, 255, 136, 0.2), rgba(0, 153, 255, 0.2));
+    border: 2px solid var(--primary-color);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-sm) var(--spacing-md);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    z-index: 2000;
+    animation: commentaryPulse 2s ease-in-out infinite;
+}
+
+@keyframes commentaryPulse {
+    0%, 100% {
+        box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(0, 255, 136, 0.6);
+    }
+}
+
+.commentary-icon {
+    font-size: 1.2rem;
+}
+
+.commentary-text {
+    font-family: var(--font-secondary);
+    color: var(--primary-color);
+    font-size: 0.9rem;
+}
+        
+        .golden-goal-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(45deg, var(--golden-goal-color), #ff8c00);
+            color: white;
+            padding: var(--spacing-md) var(--spacing-lg);
+            border-radius: var(--radius-lg);
+            font-family: var(--font-primary);
+            font-size: 1.2rem;
+            text-align: center;
+            animation: goldenGoalPulse 1s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        
+        @keyframes goldenGoalPulse {
+            0%, 100% { 
+                transform: translate(-50%, -50%) scale(1);
+                box-shadow: 0 0 20px var(--golden-goal-color);
+            }
+            50% { 
+                transform: translate(-50%, -50%) scale(1.1);
+                box-shadow: 0 0 40px var(--golden-goal-color);
+            }
+        }
+        
+        .match-elimination-warning {
+            background: linear-gradient(45deg, var(--error-color), #cc0000);
+            color: white;
+            padding: var(--spacing-sm);
+            border-radius: var(--radius-md);
+            margin: var(--spacing-sm) 0;
+            text-align: center;
+            font-family: var(--font-primary);
+            font-size: 0.8rem;
+            animation: warningFlash 2s ease-in-out infinite;
+        }
+        
+        @keyframes warningFlash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="loading-screen">
+        <div class="loading-container">
+            <div class="cyber-logo">
+                <h1>PONG LEAGUE</h1>
+                <div class="version-tag">v2.0</div>
+            </div>
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Initializing Tournament Arena...</div>
+            <div class="loading-bar">
+                <div class="loading-progress" id="loadingProgress"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Mode Indicator -->
+    <div id="gameModeIndicator" class="game-mode-indicator hidden">
+        TOURNAMENT MODE
+    </div>
+
+    <!-- Connection Status -->
+    <div id="connectionStatus" class="connection-status">
+        <div class="status-indicator" id="statusIndicator"></div>
+        <span id="statusText">Connecting...</span>
+        <div class="latency-display" id="latencyDisplay">0ms</div>
+    </div>
+
+    <div class="container">
+        <!-- Enhanced Header -->
+        <div class="header">
+            <div class="header-glow"></div>
+            <h1 class="main-title">
+                <span class="glitch" data-text="🏆 PONG LEAGUE 2.0">🏆 PONG LEAGUE 2.0</span>
+            </h1>
+            <p class="subtitle">Next-Gen Tournament Championship Arena</p>
+            <div class="feature-tags">
+                <span class="tag">Tournament Brackets</span>
+                <span class="tag">Golden Goal System</span>
+                <span class="tag">Fair Bye Allocation</span>
+                <span class="tag">Real-time Stats</span>
+            </div>
+        </div>
+
+        <!-- Join League Section -->
+        <div id="joinSection" class="card glass-card">
+            <div class="card-header">
+                <h2>🚀 Join Championship</h2>
+            </div>
+            <div class="join-form">
+                <div class="input-group">
+                    <input type="text" id="playerName" placeholder="Enter your champion name..." maxlength="20" class="cyber-input">
+                    <div class="input-underline"></div>
+                </div>
+                
+                <div class="device-detection" id="deviceInfo">
+                    <small>Device: <span id="deviceType">Detecting...</span> | Performance: <span id="performanceLevel">Auto</span></small>
+                </div>
+                
+                <button class="btn btn-primary cyber-btn" onclick="joinLeague()">
+                    <span class="btn-text">JOIN CHAMPIONSHIP</span>
+                    <div class="btn-glow"></div>
+                </button>
+            </div>
+            
+            <div id="joinStatus" class="status-message hidden">
+                <div class="pulse-loader"></div>
+                <span>Connecting to championship server...</span>
+            </div>
+        </div>
+
+        <!-- Enhanced Waiting Section -->
+        <div id="waitingSection" class="card glass-card hidden">
+            <div class="card-header">
+                <h2>Championship: <span id="leagueName" class="highlight">-</span></h2>
+            </div>
+            
+            <div class="league-info">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-value" id="playerCount">0</div>
+                        <div class="info-label">Players</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-value" id="maxPlayers">0</div>
+                        <div class="info-label">Max</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-value" id="serverVersion">2.0</div>
+                        <div class="info-label">Version</div>
+                    </div>
+                </div>
+                
+                <div class="waiting-status">
+                    <div class="status-animation">
+                        <div class="orbit-spinner">
+                            <div class="orbit orbit1"></div>
+                            <div class="orbit orbit2"></div>
+                            <div class="orbit orbit3"></div>
+                        </div>
+                    </div>
+                    <p>Waiting for championship to start...</p>
+                </div>
+                
+                <div class="player-list" id="playerList">
+                    <!-- Dynamic player list will appear here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Enhanced Game Section -->
+        <div id="gameSection" class="card glass-card hidden">
+            <!-- Tournament Round Info -->
+            <div id="tournamentRoundInfo" class="tournament-round-info hidden">
+                <div class="round-number" id="roundNumber">Round 1</div>
+                <div class="round-description" id="roundDescription">Single Elimination Tournament</div>
+            </div>
+
+            <!-- Your Tournament Status -->
+            <div id="yourStatus" class="your-status hidden">
+                <div class="status-icon" id="statusIcon">⚔️</div>
+                <div class="status-message" id="statusMessage">Ready for battle!</div>
+                <div class="status-detail" id="statusDetail">Waiting for match assignment...</div>
+            </div>
+
+            <!-- Tournament Bracket Viewer -->
+            <div id="tournamentBracketViewer" class="tournament-bracket-viewer hidden">
+                <h3>Tournament Bracket</h3>
+                <div id="bracketViewerContainer" class="bracket-viewer-container">
+                    <!-- Tournament bracket visualization for players -->
+                </div>
+            </div>
+
+            <!-- Match Elimination Warning -->
+            <div id="eliminationWarning" class="match-elimination-warning hidden">
+                ⚠️ ELIMINATION MATCH - LOSE AND YOU'RE OUT! ⚠️
+            </div>
+
+            <div class="game-header">
+                <div class="match-info">
+                    <h3>Current Match</h3>
+                    <div id="currentMatch" class="match-display">Preparing match...</div>
+                    <div class="match-progress" id="matchProgress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <span id="matchdayInfo">Round 1</span>
+                    </div>
+                </div>
+                
+                <div class="game-stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="gameTimer">3:00</div>
+                        <div class="stat-label">Time</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="scoreDisplay">0 - 0</div>
+                        <div class="stat-label">Score</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="rallyCount">0</div>
+                        <div class="stat-label">Rally</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enhanced Game Canvas Container -->
+            <div class="game-container">
+                <div class="canvas-wrapper">
+                    <canvas id="gameCanvas" width="900" height="500"></canvas>
+                    
+                    <!-- Golden Goal Indicator Overlay -->
+                    <div id="goldenGoalIndicator" class="golden-goal-indicator hidden">
+                        ⚡ GOLDEN GOAL MODE ⚡<br>
+                        <small>First goal wins!</small>
+                    </div>
+                    
+                    <div class="canvas-overlay" id="canvasOverlay">
+                        <div class="game-instructions hidden" id="gameInstructions">
+                            <h4>Ready to Play!</h4>
+                            <p>Use WASD or Arrow Keys to control your paddle</p>
+                            <div class="key-indicators">
+                                <div class="key-group">
+                                    <span class="key">W</span>
+                                    <span class="key">S</span>
+                                    <small>or</small>
+                                    <span class="key">↑</span>
+                                    <span class="key">↓</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="connection-warning hidden" id="connectionWarning">
+                            <div class="warning-icon">⚠</div>
+                            <div class="warning-text">
+                                <h4>Connection Issues</h4>
+                                <p>Experiencing network lag. Your paddle may feel delayed.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Performance Monitor -->
+                <div class="performance-monitor" id="performanceMonitor">
+                    <div class="perf-item">
+                        <span class="perf-label">FPS:</span>
+                        <span class="perf-value" id="fpsCounter">60</span>
+                    </div>
+                    <div class="perf-item">
+                        <span class="perf-label">Ping:</span>
+                        <span class="perf-value" id="pingDisplay">0ms</span>
+                    </div>
+                    <div class="perf-item">
+                        <span class="perf-label">Quality:</span>
+                        <span class="perf-value" id="qualityIndicator">High</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="game-controls">
+                <div class="control-panel">
+                    <div class="status-display">
+                        <div id="matchStatus" class="match-status">Waiting for match...</div>
+                        <div id="playerRole" class="player-role hidden">You are the <span class="role-highlight">Left</span> player</div>
+                    </div>
+                    
+                    <div class="quick-stats">
+                        <div class="quick-stat">
+                            <span class="stat-icon">🎯</span>
+                            <span id="yourScore">0</span>
+                        </div>
+                        <div class="quick-stat">
+                            <span class="stat-icon">🏃</span>
+                            <span id="paddleSpeed">Normal</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Mobile Touch Controls -->
+                <div class="touch-controls hidden" id="touchControls">
+                    <button class="touch-btn" id="upBtn">
+                        <span>↑</span>
+                    </button>
+                    <button class="touch-btn" id="downBtn">
+                        <span>↓</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Enhanced Results Section -->
+<!-- Replace the results section with this version -->
+<div id="resultsSection" class="card glass-card hidden">
+    <div class="card-header">
+        <h2>🏆 Championship Results</h2>
+    </div>
+    
+    <!-- Tournament Champion Display -->
+    <div id="tournamentChampion" class="champion-display hidden">
+        <h2>🏆 TOURNAMENT CHAMPION 🏆</h2>
+        <div class="champion-name" id="finalChampionName">-</div>
+        <div class="champion-stats" id="finalChampionStats">Eliminated all opponents</div>
+    </div>
+
+    <!-- Enhanced Awards Display -->
+    <div id="awards" class="awards-container hidden">
+        <!-- Awards will be populated dynamically -->
+    </div>
+
+    <!-- Legendary Achievement (Grand Slam) -->
+    <div id="legendaryAchievement" class="legendary-achievement hidden">
+        <div class="legendary-glow"></div>
+        <div class="legendary-content">
+            <h2>🌟 LEGENDARY ACHIEVEMENT 🌟</h2>
+            <h3 id="achievementType">Grand Slam Winner!</h3>
+            <div class="legendary-name" id="legendaryName">-</div>
+            <div class="legendary-description">
+                <p>Champion • Top Scorer • Best Player • Best Defense</p>
+            </div>
+        </div>
+        <div class="confetti"></div>
+    </div>
+
+    <!-- League Table (ONLY shown in league mode, hidden in tournament) -->
+    <div class="table-container" id="leagueTableContainer">
+        <h3 id="finalTableTitle">Final Championship Table</h3>
+        <div class="table-wrapper">
+            <table class="enhanced-table" id="finalTable">
+                <thead>
+                    <tr>
+                        <th>Pos</th>
+                        <th>Player</th>
+                        <th>P</th>
+                        <th>W</th>
+                        <th>D</th>
+                        <th>L</th>
+                        <th>GF</th>
+                        <th>GA</th>
+                        <th>GD</th>
+                        <th>Pts</th>
+                        <th>Form</th>
+                    </tr>
+                </thead>
+                <tbody id="finalTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Tournament/League Statistics -->
+    <div class="stats-grid" id="leagueStats">
+        <!-- Stats cards populated dynamically -->
+    </div>
+
+    <div class="result-actions">
+        <button class="btn btn-secondary cyber-btn" onclick="showDetailedStats()">
+            <span class="btn-text">VIEW DETAILED STATS</span>
+        </button>
+        <button class="btn btn-primary cyber-btn" onclick="location.reload()">
+            <span class="btn-text">NEW CHAMPIONSHIP</span>
+        </button>
+    </div>
+</div>
+
+        <!-- Enhanced Detailed Stats Modal -->
+        <div id="statsModal" class="modal hidden">
+            <div class="modal-content glass-card">
+                <div class="modal-header">
+                    <h3>📊 Detailed Statistics</h3>
+                    <button class="close-btn" onclick="closeStatsModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="stats-tabs">
+                        <button class="tab-btn active" onclick="showStatsTab('personal')">Your Stats</button>
+                        <button class="tab-btn" onclick="showStatsTab('league')">Championship Stats</button>
+                        <button class="tab-btn" onclick="showStatsTab('records')">Records</button>
+                    </div>
+                    
+                    <div class="tab-content">
+                        <div id="personalStats" class="tab-pane active">
+                            <!-- Personal statistics will be populated here -->
+                        </div>
+                        <div id="leagueStatsTab" class="tab-pane">
+                            <!-- League-wide statistics -->
+                        </div>
+                        <div id="recordsTab" class="tab-pane">
+                            <!-- Records and achievements -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notification System -->
+        <div id="notifications" class="notification-container"></div>
+        <!-- Commentary Audio Player -->
+<div id="commentaryIndicator" class="commentary-indicator hidden">
+    <span class="commentary-icon">🎙️</span>
+    <span class="commentary-text">Live Commentary</span>
+</div>
+
+        <!-- System Messages -->
+        <div id="systemMessages" class="system-messages"></div>
+    </div>
+
+    <!-- Background Effects -->
+    <div class="background-effects">
+        <div class="grid-lines"></div>
+        <div class="particles" id="particles"></div>
+        <div class="scanlines"></div>
+    </div>
+
+    <!-- Audio Elements -->
+    <audio id="paddleHitSound" preload="auto">
+        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+D2u2MfFD2S3/DFdyMFl5Zq" type="audio/wav">
+    </audio>
+    <audio id="goalSound" preload="auto">
+        <source src="data:audio/wav;base64,UklGRn4CAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVoCAACqqqqqq2MfFD2S3/DFdyMF" type="audio/wav">
+    </audio>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script-v2.js"></script>
+    
+    <script>
+        // Initialize app when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeApp();
+        });
+        
+        // Detect device capabilities
+        function detectDevice() {
+            const deviceInfo = {
+                userAgent: navigator.userAgent,
+                platform: navigator.platform,
+                isMobile: /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent),
+                isTablet: /iPad|Android/i.test(navigator.userAgent) && window.innerWidth > 768,
+                screenWidth: window.screen.width,
+                screenHeight: window.screen.height,
+                pixelRatio: window.devicePixelRatio || 1,
+                touchSupport: 'ontouchstart' in window,
+                webGL: !!window.WebGLRenderingContext,
+                performance: {
+                    memory: navigator.deviceMemory || 'unknown',
+                    cores: navigator.hardwareConcurrency || 'unknown'
+                }
+            };
+            
+            // Update UI with device info
+            document.getElementById('deviceType').textContent = 
+                deviceInfo.isMobile ? 'Mobile' : 
+                deviceInfo.isTablet ? 'Tablet' : 'Desktop';
+                
+            // Show touch controls if needed
+            if (deviceInfo.touchSupport && deviceInfo.isMobile) {
+                document.getElementById('touchControls').classList.remove('hidden');
+            }
+            
+            return deviceInfo;
+        }
+        
+        // Performance detection
+        function detectPerformance() {
+            const canvas = document.createElement('canvas');
+            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            const renderer = gl ? gl.getParameter(gl.RENDERER) : 'Software';
+            
+            // Simple performance heuristic
+            let performanceLevel = 'medium';
+            
+            if (renderer.includes('Intel HD') || renderer.includes('Software')) {
+                performanceLevel = 'low';
+            } else if (renderer.includes('GeForce') || renderer.includes('Radeon') || renderer.includes('AMD')) {
+                performanceLevel = 'high';
+            }
+            
+            // Consider device memory and cores
+            const memory = navigator.deviceMemory || 4;
+            const cores = navigator.hardwareConcurrency || 4;
+            
+            if (memory >= 8 && cores >= 8) {
+                performanceLevel = 'high';
+            } else if (memory <= 2 || cores <= 2) {
+                performanceLevel = 'low';
+            }
+            
+            document.getElementById('performanceLevel').textContent = performanceLevel.charAt(0).toUpperCase() + performanceLevel.slice(1);
+            return performanceLevel;
+        }
+        
+        // Initialize application
+        function initializeApp() {
+            // Show loading screen
+            showLoadingScreen();
+            
+            // Detect device capabilities
+            const deviceInfo = detectDevice();
+            const performanceLevel = detectPerformance();
+            
+            // Start connection process
+            setTimeout(() => {
+                initSocket();
+                hideLoadingScreen();
+            }, 2000);
+        }
+        
+        function showLoadingScreen() {
+            const progress = document.getElementById('loadingProgress');
+            let width = 0;
+            
+            const interval = setInterval(() => {
+                width += Math.random() * 20;
+                if (width >= 100) {
+                    width = 100;
+                    clearInterval(interval);
+                }
+                progress.style.width = width + '%';
+            }, 100);
+        }
+        
+        function hideLoadingScreen() {
+            document.getElementById('loadingScreen').style.display = 'none';
+        }
+
+        // Security measures
+        document.addEventListener('contextmenu', e => e.preventDefault());
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'F12' || 
+                (e.ctrlKey && e.shiftKey && e.key === 'I') ||
+                (e.ctrlKey && e.key === 'U') ||
+                (e.ctrlKey && e.shiftKey && e.key === 'C')) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        document.body.style.userSelect = 'none';
+
+        // Tournament-specific UI helpers
+        function updateGameModeUI(gameMode) {
+            const indicator = document.getElementById('gameModeIndicator');
+            if (gameMode === 'tournament') {
+                indicator.textContent = 'TOURNAMENT MODE';
+                indicator.classList.remove('hidden');
+                
+                // Update titles
+                document.querySelector('.subtitle').textContent = 'Next-Gen Tournament Championship Arena';
+document.getElementById('finalTableTitle').textContent = 'Final Tournament Results';
+            } else {
+                indicator.textContent = 'LEAGUE MODE';
+                indicator.classList.remove('hidden');
+                
+                document.querySelector('.subtitle').textContent = 'Next-Gen Multiplayer Championship Arena';
+                document.getElementById('finalTableTitle').textContent = 'Final Championship Table';
+            }
+        }
+
+        function showTournamentElements() {
+            document.getElementById('tournamentRoundInfo').classList.remove('hidden');
+            document.getElementById('yourStatus').classList.remove('hidden');
+            document.getElementById('tournamentBracketViewer').classList.remove('hidden');
+            document.getElementById('eliminationWarning').classList.remove('hidden');
+        }
+
+        function hideTournamentElements() {
+            document.getElementById('tournamentRoundInfo').classList.add('hidden');
+            document.getElementById('yourStatus').classList.add('hidden');
+            document.getElementById('tournamentBracketViewer').classList.add('hidden');
+            document.getElementById('eliminationWarning').classList.add('hidden');
+        }
+
+        function updateTournamentStatus(status, message, detail, icon) {
+            const statusElement = document.getElementById('yourStatus');
+            const statusIcon = document.getElementById('statusIcon');
+            const statusMessage = document.getElementById('statusMessage');
+            const statusDetail = document.getElementById('statusDetail');
+
+            if (statusElement && statusIcon && statusMessage && statusDetail) {
+                statusElement.className = `your-status ${status}`;
+                statusIcon.textContent = icon;
+                statusMessage.textContent = message;
+                statusDetail.textContent = detail;
+            }
+        }
+
+        function showGoldenGoalMode(show = true) {
+            const indicator = document.getElementById('goldenGoalIndicator');
+            if (indicator) {
+                indicator.classList.toggle('hidden', !show);
+            }
+        }
+
+        function updateRoundInfo(round, totalRounds, description) {
+            const roundNumber = document.getElementById('roundNumber');
+            const roundDesc = document.getElementById('roundDescription');
+
+            if (roundNumber) roundNumber.textContent = `Round ${round}`;
+            if (roundDesc) roundDesc.textContent = description || `Round ${round} of ${totalRounds}`;
+        }
+
+        function displayPlayerBracket(bracketData) {
+            const container = document.getElementById('bracketViewerContainer');
+            if (!container || !bracketData) return;
+
+            container.innerHTML = '';
+
+            for (let round = 1; round <= bracketData.totalRounds; round++) {
+                const roundMatches = bracketData.rounds[round] || [];
+                const roundDiv = document.createElement('div');
+                roundDiv.className = 'bracket-round-viewer';
+
+                const roundTitle = document.createElement('div');
+                roundTitle.className = 'round-title';
+                roundTitle.textContent = round === bracketData.totalRounds ? 'Final' : `Round ${round}`;
+                roundDiv.appendChild(roundTitle);
+
+                roundMatches.forEach(match => {
+                    const matchDiv = document.createElement('div');
+                    matchDiv.className = 'bracket-match-viewer';
+                    
+                    const isCurrentPlayer = match.player1 === gameClient?.gameState?.playerName || 
+                                          match.player2 === gameClient?.gameState?.playerName;
+                    
+                    if (isCurrentPlayer) {
+                        matchDiv.classList.add('current-player');
+                    }
+                    
+                    if (match.completed) {
+                        matchDiv.classList.add('completed');
+                    }
+
+                    if (match.isBye) {
+                        const playerDiv = document.createElement('div');
+                        playerDiv.className = 'match-player-viewer winner';
+                        playerDiv.textContent = match.player1;
+                        matchDiv.appendChild(playerDiv);
+
+                        const byeDiv = document.createElement('div');
+                        byeDiv.className = 'match-player-viewer';
+                        byeDiv.textContent = 'BYE';
+                        byeDiv.style.fontStyle = 'italic';
+                        byeDiv.style.color = 'var(--text-muted)';
+                        matchDiv.appendChild(byeDiv);
+                    } else {
+                        const player1Div = document.createElement('div');
+                        player1Div.className = 'match-player-viewer';
+                        if (match.winner === match.player1) player1Div.classList.add('winner');
+                        if (match.player1 === gameClient?.gameState?.playerName) player1Div.classList.add('current');
+                        player1Div.textContent = match.player1;
+                        matchDiv.appendChild(player1Div);
+
+                        const vsDiv = document.createElement('div');
+                        vsDiv.textContent = 'vs';
+                        vsDiv.style.fontSize = '0.7rem';
+                        vsDiv.style.color = 'var(--text-muted)';
+                        matchDiv.appendChild(vsDiv);
+
+                        const player2Div = document.createElement('div');
+                        player2Div.className = 'match-player-viewer';
+                        if (match.winner === match.player2) player2Div.classList.add('winner');
+                        if (match.player2 === gameClient?.gameState?.playerName) player2Div.classList.add('current');
+                        player2Div.textContent = match.player2;
+                        matchDiv.appendChild(player2Div);
+
+                        if (match.completed && match.score) {
+                            const scoreDiv = document.createElement('div');
+                            scoreDiv.className = 'match-score-viewer';
+                            scoreDiv.textContent = `${match.score[match.player1] || 0} - ${match.score[match.player2] || 0}`;
+                            matchDiv.appendChild(scoreDiv);
+                        }
+                    }
+
+                    roundDiv.appendChild(matchDiv);
+                });
+
+                container.appendChild(roundDiv);
+            }
+        }
+
+        function showTournamentChampion(championName) {
+            const championDisplay = document.getElementById('tournamentChampion');
+            const championNameEl = document.getElementById('finalChampionName');
+            
+            if (championDisplay && championNameEl) {
+                championDisplay.classList.remove('hidden');
+                championNameEl.textContent = championName;
+                
+                // Hide regular awards if tournament mode
+                const awards = document.getElementById('awards');
+                if (awards) awards.classList.add('hidden');
+            }
+        }
+
+        function addTournamentStats(stats) {
+            const statsGrid = document.getElementById('leagueStats');
+            if (!statsGrid || !stats) return;
+
+            // Add tournament-specific stats
+            if (stats.byesAwarded !== undefined) {
+                const byeCard = document.createElement('div');
+                byeCard.className = 'stat-card';
+                byeCard.innerHTML = `
+                    <div class="stat-icon">⏩</div>
+                    <div class="stat-number">${stats.byesAwarded}</div>
+                    <div class="stat-label">Byes Awarded</div>
+                `;
+                statsGrid.appendChild(byeCard);
+            }
+
+            if (stats.goldenGoalMatches !== undefined) {
+                const goldenCard = document.createElement('div');
+                goldenCard.className = 'stat-card';
+                goldenCard.innerHTML = `
+                    <div class="stat-icon">⚡</div>
+                    <div class="stat-number">${stats.goldenGoalMatches}</div>
+                    <div class="stat-label">Golden Goals</div>
+                `;
+                statsGrid.appendChild(goldenCard);
+            }
+
+            if (stats.totalRounds !== undefined) {
+                const roundsCard = document.createElement('div');
+                roundsCard.className = 'stat-card';
+                roundsCard.innerHTML = `
+                    <div class="stat-icon">🏆</div>
+                    <div class="stat-number">${stats.totalRounds}</div>
+                    <div class="stat-label">Tournament Rounds</div>
+                `;
+                statsGrid.appendChild(roundsCard);
+            }
+
+            if (stats.eliminatedPlayers !== undefined) {
+                const eliminatedCard = document.createElement('div');
+                eliminatedCard.className = 'stat-card';
+                eliminatedCard.innerHTML = `
+                    <div class="stat-icon">❌</div>
+                    <div class="stat-number">${stats.eliminatedPlayers.length || 0}</div>
+                    <div class="stat-label">Players Eliminated</div>
+                `;
+                statsGrid.appendChild(eliminatedCard);
+            }
+        }
+
+        function showEliminationCountdown(seconds) {
+            const countdown = document.createElement('div');
+            countdown.className = 'elimination-countdown';
+            countdown.textContent = `Elimination in: ${seconds}s`;
+            
+            const gameSection = document.getElementById('gameSection');
+            if (gameSection) {
+                gameSection.insertBefore(countdown, gameSection.firstChild);
+                
+                const timer = setInterval(() => {
+                    seconds--;
+                    countdown.textContent = `Elimination in: ${seconds}s`;
+                    
+                    if (seconds <= 0) {
+                        clearInterval(timer);
+                        countdown.remove();
+                    }
+                }, 1000);
+            }
+        }
+
+        // Performance optimization for mobile
+        if (/Mobi|Android/i.test(navigator.userAgent)) {
+            // Reduce particle count for mobile
+            document.addEventListener('DOMContentLoaded', () => {
+                const particles = document.getElementById('particles');
+                if (particles) {
+                    particles.style.opacity = '0.3';
+                }
+            });
+        }
+
+        // Accessibility improvements
+        document.addEventListener('keydown', (e) => {
+            // Allow escape key to close modals
+            if (e.key === 'Escape') {
+                const modal = document.querySelector('.modal:not(.hidden)');
+                if (modal) {
+                    modal.classList.add('hidden');
+                }
+            }
+        });
+
+        // Focus management for better accessibility
+        function trapFocus(element) {
+            const focusableElements = element.querySelectorAll(
+                'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+            );
+            const firstFocusableElement = focusableElements[0];
+            const lastFocusableElement = focusableElements[focusableElements.length - 1];
+
+            element.addEventListener('keydown', (e) => {
+                if (e.key === 'Tab') {
+                    if (e.shiftKey) {
+                        if (document.activeElement === firstFocusableElement) {
+                            lastFocusableElement.focus();
+                            e.preventDefault();
+                        }
+                    } else {
+                        if (document.activeElement === lastFocusableElement) {
+                            firstFocusableElement.focus();
+                            e.preventDefault();
+                        }
+                    }
+                }
+            });
+        }
+
+        // Apply focus trap to modals when they're shown
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'class') {
+                    const target = mutation.target;
+                    if (target.classList.contains('modal') && !target.classList.contains('hidden')) {
+                        trapFocus(target);
+                        // Focus first interactive element
+                        const firstButton = target.querySelector('button, input, select, textarea');
+                        if (firstButton) firstButton.focus();
+                    }
+                }
+            });
+        });
+
+        // Observe all modal elements
+        document.querySelectorAll('.modal').forEach((modal) => {
+            observer.observe(modal, { attributes: true });
+        });
+
+        // Enhanced error handling for WebSocket connections
+        window.addEventListener('error', (e) => {
+            console.error('Global error:', e.error);
+            if (gameClient && typeof gameClient.showNotification === 'function') {
+                gameClient.showNotification('An unexpected error occurred', 'error');
+            }
+        });
+
+        window.addEventListener('unhandledrejection', (e) => {
+            console.error('Unhandled promise rejection:', e.reason);
+            if (gameClient && typeof gameClient.showNotification === 'function') {
+                gameClient.showNotification('A network error occurred', 'error');
+            }
+        });
+
+        // Service Worker registration for offline support (optional)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then((registration) => {
+                        console.log('SW registered: ', registration);
+                    })
+                    .catch((registrationError) => {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
